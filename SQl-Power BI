@@ -1,0 +1,224 @@
+SELECT * FROM weekday_7pm.`carbon dioxide emission estimates`;
+
+
+-- First, I look over my dataset
+use weekday_7pm;
+SELECT 
+    *
+FROM
+    weekday_7pm.`carbon dioxide emission estimates`;
+
+-- then, I check if there are any columns that have null values.
+
+SELECT 
+    *
+FROM
+    weekday_7pm.`carbon dioxide emission estimates`
+WHERE
+    Year IS NULL;
+
+SELECT 
+    *
+FROM
+    weekday_7pm.`carbon dioxide emission estimates`
+WHERE
+    Series IS NULL;
+
+SELECT 
+    *
+FROM
+    weekday_7pm.`carbon dioxide emission estimates`
+WHERE
+    Value IS NULL;
+
+-- after making sure that there are no nulls in my dataset, I move to exam the smaller parts of my dataset
+-- including the range of the column "Year", distinct value of the column "Series", the range of the column "Value" 
+-- with different conditions. 
+
+SELECT DISTINCT
+    series
+FROM
+    weekday_7pm.`carbon dioxide emission estimates`;
+    
+SELECT 
+    MIN(Year), MAX(Year)
+FROM
+    weekday_7pm.`carbon dioxide emission estimates`;
+    
+SELECT 
+    MIN(value), MAX(value)
+FROM
+    weekday_7pm.`carbon dioxide emission estimates`
+WHERE
+    Series = 'Emissions (thousand metric tons of carbon dioxide)';
+    
+    
+SELECT 
+    MIN(value), MAX(value)
+FROM
+    weekday_7pm.`carbon dioxide emission estimates`
+WHERE
+    Series = 'Emissions per capita (metric tons of carbon dioxide)';
+    
+
+
+-- after checking some smaller parts of my dataset, I find out that the 'Series' column has 2 distinct values.
+-- I decide to break these two values into two different tables so that I can work with them easier. 
+
+-- firstly, I creat a new table called 'emissions'
+
+CREATE TABLE emissions (
+    Country NVARCHAR(50),
+    Year INT,
+    Series NVARCHAR(100),
+    value FLOAT
+);
+
+-- I insert values from the 'Carbon_Emission' table where Series = 'Emissions (thousand metric tons of carbon dioxide)'
+-- into the 'emissions' table that I just create.
+
+insert into emissions
+select * from weekday_7pm.`carbon dioxide emission estimates`
+where Series = 'Emissions (thousand metric tons of carbon dioxide)';
+
+SELECT 
+    *
+FROM
+    emissions;
+
+-- Next, I creat a new table called 'perCapital' for the series Emissions per capita (metric tons of carbon dioxide)
+
+CREATE TABLE perCaptial1 (
+    Country NVARCHAR(50),
+    Year INT,
+    Series NVARCHAR(100),
+    Value FLOAT
+);
+
+-- I insert values from the 'Carbon_Emission' table where Series = 'Emissions per capita (metric tons of carbon dioxide)'
+-- into the 'perCapital' table that I just create
+
+insert into perCaptial1
+select * from weekday_7pm.`carbon dioxide emission estimates`
+where Series = 'Emissions per capita (metric tons of carbon dioxide)';
+
+-- Now, I'm going to explore the perCapital table first 
+
+select * from perCaptial1;
+
+
+-- I want to find the data about only America. 
+
+SELECT DISTINCT
+    Country
+FROM
+    perCaptial1
+WHERE
+    Country LIKE 'U%'; 
+ -- find countries that start with the letter U since there are many names for America, I'm not sure
+ -- which one is used in my  dataset.
+ 
+ 
+ -- next, I find the min and max value of Carbon Emissions per capital in America
+ 
+ SELECT 
+    MIN(Value) AS min_value, MAX(Value) AS Max_value, Country
+FROM
+    perCaptial1
+WHERE
+    Country = 'United States of America';
+ -- The min value is 14.606 and the max value is 20.168
+ 
+ 
+SELECT 
+    Year, MAX(Value), Country
+FROM
+    perCaptial1
+WHERE
+    Country = 'United States of America'
+GROUP BY Year;
+
+SELECT 
+    Year, MIN(Value), Country
+FROM
+    perCaptial1
+WHERE
+    Country = 'United States of America'
+GROUP BY Year
+ORDER BY Year DESC;
+-- The year for the max value is 1975 and the year of min value is 2017.
+
+
+-- next, I wanted to know the changes of emissions per capital in 2017 compared to the changes of emissions per capital in 1975 --
+
+
+;with value1975 as
+(select Country, Value as old_value,Year
+from perCaptial1
+where Year = 1975),
+value2017 as
+(select Country, Value as new_value, Year
+from perCaptial1
+where Year = 2017)
+
+SELECT DISTINCT
+    perCaptial1.Country,
+    ROUND((value2017.new_value - value1975.old_value) / value1975.old_value,
+            2) AS changes
+FROM
+    value1975
+        INNER JOIN
+    value2017 ON value1975.Country = value2017.Country
+        INNER JOIN
+    perCaptial1 ON value1975.Country = perCaptial1.Country
+ORDER BY changes DESC;
+-- Oman is the country that has the highest rate of increasing, which is 16.25.
+-- Dem. People's rep. Korea has the lowest rate of decreasing which is -0.84.
+
+-- now, I'm going to with the emissions table
+
+select * from emissions;
+-- I want to know the min and max value of Amercia
+
+SELECT 
+    *
+FROM
+    emissions
+WHERE
+    Country LIKE '%United States of America%';
+    
+SELECT 
+    MAX(Value), MIN(Value)
+FROM
+    emissions
+WHERE
+    Country LIKE '%United States of America%';
+    -- So, the Max value is 5703220 and the Min value is 4355840.
+    
+
+SELECT 
+    *
+FROM
+    emissions
+WHERE
+    Value = 5703220;
+
+SELECT 
+    *
+FROM
+    emissions
+WHERE
+    Value = 4355839;
+-- So, the max value Year is 2005 and min value Year is 1975.
+
+
+-- finally, I want to find out which 5 countries have the highest amount of carbon emissions.
+
+SELECT 
+    Country, SUM(Value) AS sum_value
+FROM
+    emissions
+GROUP BY Country
+ORDER BY sum_value DESC
+LIMIT 5;
+-- So, the Top 5 countries having highest amount of carbon emissions are : China,USA,India,Russian Federation,Japan.
